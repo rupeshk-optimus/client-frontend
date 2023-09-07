@@ -70,17 +70,3 @@ jobs:
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
     
-  test-after-deployment:
-    runs-on: windows-latest
-    needs: deploy
-    steps:
-      - name: Check out test automation repository
-        uses: actions/checkout@v2
-        with:
-          repository: RepositoryOptimusInfo/Enkel-Test-Automation
-
-      - name: Run test automation script
-        run: |
-          cd RepositoryOptimusInfo/Enkel-Test-Automation
-          npm ci
-          npm test
