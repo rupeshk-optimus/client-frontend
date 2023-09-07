@@ -1,0 +1,86 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
+
+name: Node.js CI pipeline
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [ "production" ]
+  # pull_request:
+  #   branches: [ "production" ]
+
+env:
+  AZURE_WEBAPP_NAME: clientPortalUIDev    # set this to your application's name
+  AZURE_WEBAPP_PACKAGE_PATH: '.'      # set this to the path to your web app project, defaults to the repository root
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    # strategy:
+    #   matrix:
+    #     node-version: [14.x, 16.x, 18.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+    - uses: actions/checkout@v3 
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: 14.x
+        cache: 'npm'
+    - run: npm ci
+    - run: npm run build --if-present
+    - run: npm test
+
+    - name: Zip artifact for deployment
+      run: Compress-Archive * release.zip
+
+    - name: Upload artifact for deployment job
+      uses: actions/upload-artifact@v3
+      with:
+        name: node-app
+        path: release.zip
+
+  deploy:
+    permissions:
+      contents: none
+    runs-on: windows-latest
+    needs: build
+    environment:
+      name: 'Development'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Download artifact from build job
+      uses: actions/download-artifact@v3
+      with:
+        name: node-app
+
+    - name: unzip artifact for deployment
+      run: unzip release.zip
+
+    - name: 'Deploy to Azure WebApp'
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+    
+  test-after-deployment:
+    runs-on: windows-latest
+    needs: deploy
+    steps:
+      - name: Check out test automation repository
+        uses: actions/checkout@v2
+        with:
+          repository: RepositoryOptimusInfo/Enkel-Test-Automation
+
+      - name: Run test automation script
+        run: |
+          cd RepositoryOptimusInfo/Enkel-Test-Automation
+          npm ci
+          npm test
