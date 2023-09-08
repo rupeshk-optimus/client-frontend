@@ -1,11 +1,11 @@
-name: build
+name: Node.js CI pipeline
 
 on:
   workflow_dispatch:
 
 env:
   AZURE_WEBAPP_NAME: testing-enkel
-  AZURE_WEBAPP_PACKAGE_PATH: 'build' # Specify the path to your build folder
+  AZURE_WEBAPP_PACKAGE_PATH: 'dist' # Update to the correct path relative to your repository's root
 
 jobs:
   build:
@@ -20,7 +20,7 @@ jobs:
     - run: npm run build --if-present
     - run: npm test
     - name: Create zip artifact
-      run: Compress-Archive -Path build -DestinationPath build.zip
+      run: Compress-Archive -Path dist -DestinationPath build.zip # Update 'dist' to the correct path
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v2
