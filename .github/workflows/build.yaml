@@ -1,4 +1,4 @@
-name: Node.js CI pipeline
+name: build
 
 on:
   workflow_dispatch:
