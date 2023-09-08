@@ -1,0 +1,50 @@
+name: Node.js CI pipeline
+
+on:
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: testing-enkel
+  AZURE_WEBAPP_PACKAGE_PATH: 'build' # Specify the path to your build folder
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3 
+    - name: Use Node.js 14.x
+      uses: actions/setup-node@v2
+      with:
+        node-version: 14.x
+    - run: npm ci
+    - run: npm run build --if-present
+    - run: npm test
+    - name: Create zip artifact
+      run: Compress-Archive -Path build -DestinationPath build.zip
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: build
+        path: build.zip
+
+  deploy:
+    runs-on: windows-latest
+    needs: build
+    environment:
+      name: 'Development'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: Download build artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: build
+
+    - name: 'Deploy to Azure WebApp'
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: build.zip
